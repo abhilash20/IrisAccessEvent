@@ -21,7 +21,7 @@ public class ChangeListenerService {
 
     private void startChangeStreamListener() {
         MongoDatabase database = mongoClient.getDatabase("tms");
-        MongoCollection<Document> collection = database.getCollection("users");
+        MongoCollection<Document> collection = database.getCollection("transactionLogs");
 
         new Thread(() -> {
             collection.watch().forEach((ChangeStreamDocument<Document> change) -> {
