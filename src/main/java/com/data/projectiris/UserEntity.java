@@ -7,14 +7,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.Date;
 
 
-@Document(collection = "users")
+@Document(collection = "transactionLogs")
 public class UserEntity {
 
     @Id
     private String id;
     private String firstName;
     private String lastName;
-    private String emailAddr;
     private Date timeStamp;
 
 
@@ -27,7 +26,6 @@ public class UserEntity {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
-        this.emailAddr = emailAddr;
         this.timeStamp = timeStamp;
     }
 
@@ -51,19 +49,11 @@ public class UserEntity {
         this.lastName = lastName;
     }
 
-    public String getEmailAddr() {
-        return emailAddr;
-    }
-
-    public void setEmailAddr(String emailAddr) {
-        this.emailAddr = emailAddr;
-    }
-
     public Date getTimeStamp() { return timeStamp; }
     public void setTimeStamp(Date timeStamp) { this.timeStamp = timeStamp;}
 
     @Override
     public String toString() {
-        return "Person{id='" + id + "',first name='" + firstName + "',last name '" + lastName + "',emailAddr='"+ emailAddr +"'time stamp'"  + timeStamp + "'}";
+        return "Person{id='" + id + "',first name='" + firstName + "',last name '" + lastName + "',emailAddr='"+  timeStamp + "'}";
     }
 }

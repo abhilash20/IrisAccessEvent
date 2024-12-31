@@ -23,6 +23,7 @@ public class ChangeListenerService {
         MongoDatabase database = mongoClient.getDatabase("tms");
         MongoCollection<Document> collection = database.getCollection("transactionLogs");
 
+
         new Thread(() -> {
             collection.watch().forEach((ChangeStreamDocument<Document> change) -> {
                 String operationType = change.getOperationType().getValue();
