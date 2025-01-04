@@ -1,13 +1,8 @@
 package com.data.projectiris;
 
-
-
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
-
 import java.util.Date;
-
 
 @Document(collection = "transactionLogs")
 public class UserEntity {
@@ -17,7 +12,6 @@ public class UserEntity {
     private String firstName;
     private String lastName;
     private Date timeStamp;
-
 
     // Getters and Setters
 
