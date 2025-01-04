@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -19,15 +20,13 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 public class ApiService {
-
-    @Value("${amadeus.endpoint}")
-    private String amadeusEndpoint;
-    @Value("${amadeus.apiKey}")
-    private String apiKey;
+    private final AmadeusProperties amadeusProperties;
     private final RestTemplate restTemplate;
     private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
 
-    public ApiService(RestTemplate restTemplate) {
+    @Autowired
+    public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate) {
+        this.amadeusProperties = amadeusProperties;
         this.restTemplate = restTemplate;
     }
 
@@ -37,7 +36,7 @@ public class ApiService {
             backoff = @Backoff(delay = 10000)  // Delay between retries (in ms)
     )
     public AccessEvent postToExternalApi(Document user) {
-        String url = amadeusEndpoint + "/API_AccessEventLogs";
+        String url = amadeusProperties.getEndpoint() + "/API_AccessEventLogs";
         AccessEvent request = new AccessEvent();
         request.setCardCode("00000239");
         request.setCardholderFirstName(user.getString("firstName"));
@@ -53,7 +52,7 @@ public class ApiService {
 
         // Set headers
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + apiKey);
+        headers.set("Authorization", "Basic " + amadeusProperties.getApiKey());
         headers.set("Accept", "application/json");
 
         // Create HttpEntity with headers

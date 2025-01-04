@@ -4,10 +4,12 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import jakarta.annotation.PostConstruct;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PreDestroy;
 
@@ -21,21 +23,27 @@ public class ChangeListenerService {
     private final MongoClient mongoClient;
     private final ApiService apiService;
     private Thread listenerThread;
-
+    private final IrisProperties irisProperties;
     private Optional<ResumeToken> lastResumeToken = Optional.empty();  // To store the resume token
 
-    public ChangeListenerService(MongoClient mongoClient, ApiService apiService) {
+    @Autowired
+    public ChangeListenerService(MongoClient mongoClient, ApiService apiService, IrisProperties irisProperties) {
         this.mongoClient = mongoClient;
         this.apiService = apiService;
-        this.lastResumeToken = loadLastResumeToken();  // Load the resume token from the metadata collection
-        startChangeStreamListener();
+        this.irisProperties = irisProperties;
+    }
+
+    @PostConstruct
+    public void init() {
+        this.lastResumeToken = loadLastResumeToken(); // Load the resume token from the metadata collection
+        startChangeStreamListener();  // Start the change stream listener after dependencies are injected
     }
 
     /**
      * Loads the last resume token from the MongoDB collection (change_stream_metadata)
      */
     private Optional<ResumeToken> loadLastResumeToken() {
-        MongoDatabase database = mongoClient.getDatabase("tms");
+        MongoDatabase database = mongoClient.getDatabase(irisProperties.getDb_name());
         MongoCollection<Document> metadataCollection = database.getCollection("change_stream_metadata");
 
         // Fetch the document containing the resume token
@@ -54,7 +62,7 @@ public class ChangeListenerService {
      * Saves the resume token to the MongoDB metadata collection
      */
     private void saveResumeToken(ResumeToken token) {
-        MongoDatabase database = mongoClient.getDatabase("tms");
+        MongoDatabase database = mongoClient.getDatabase(irisProperties.getDb_name());
         MongoCollection<Document> metadataCollection = database.getCollection("change_stream_metadata");
 
         // Convert the ResumeToken to a byte array to store in the document
@@ -66,8 +74,8 @@ public class ChangeListenerService {
     }
 
     private void startChangeStreamListener() {
-        MongoDatabase database = mongoClient.getDatabase("tms");
-        MongoCollection<Document> collection = database.getCollection("transactionLogs");
+        MongoDatabase database = mongoClient.getDatabase(irisProperties.getDb_name());
+        MongoCollection<Document> collection = database.getCollection(irisProperties.getCollection_name());
 
         listenerThread = new Thread(() -> {
             try {

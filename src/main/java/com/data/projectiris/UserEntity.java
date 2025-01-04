@@ -1,8 +1,10 @@
 package com.data.projectiris;
 
 
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+
 
 import java.util.Date;
 
@@ -22,7 +24,7 @@ public class UserEntity {
     public UserEntity() {
     }
 
-    public UserEntity(String id, String firstName, String lastName, String emailAddr, Date timeStamp) {
+    public UserEntity(String id, String firstName, String lastName, Date timeStamp) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -54,6 +56,6 @@ public class UserEntity {
 
     @Override
     public String toString() {
-        return "Person{id='" + id + "',first name='" + firstName + "',last name '" + lastName + "',emailAddr='"+  timeStamp + "'}";
+        return "Person{id='" + id + "',first name='" + firstName + "',last name '" + lastName + "',timestamp='"+  timeStamp + "'}";
     }
 }
