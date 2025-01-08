@@ -11,9 +11,10 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PreDestroy;
-
 import java.util.Optional;
 
 
@@ -26,13 +27,18 @@ private final MongoClient mongoClient;
 private final ApiService apiService;
 private Thread listenerThread;
 private final IrisProperties irisProperties;
-private Optional<ResumeToken> lastResumeToken = Optional.empty();  // To store the resume token
+private final SendEmail sendEmail;
+private Optional<ResumeToken> lastResumeToken = Optional.empty();// To store the resume token
+private boolean isMongoDbConnected=true;
 
-@Autowired
-public ChangeListenerService(MongoClient mongoClient, ApiService apiService, IrisProperties irisProperties) {
+
+
+    @Autowired
+public ChangeListenerService(MongoClient mongoClient, ApiService apiService, IrisProperties irisProperties, SendEmail sendEmail) {
 this.mongoClient = mongoClient;
 this.apiService = apiService;
 this.irisProperties = irisProperties;
+this.sendEmail = sendEmail;
 }
 
 @PostConstruct
@@ -40,8 +46,34 @@ public void init() {
 this.lastResumeToken = loadLastResumeToken(); // Load the resume token from the metadata collection
 startChangeStreamListener();  // Start the change stream listener after dependencies are injected
 }
+    // MongoDB connectivity check
+    @Scheduled(fixedRate = 200000)
+    @Async
+    public void checkMongoDbConnectivity() {
+        try {
+            MongoDatabase database = mongoClient.getDatabase(irisProperties.getDb_name());
+            database.runCommand(new Document("ping", 1));  // Ping the database
+            logger.info("MongoDB connectivity check successful.");
+            if (!isMongoDbConnected) { // MongoDB has been reconnected
+                isMongoDbConnected = true; // Update connection state
+                logger.info("Reconnecting to MongoDB...");
+                if (listenerThread == null || !listenerThread.isAlive()) {
+                    logger.info("Loading the Resume Token and Restarting the change stream listener...");
+                    init();
+                }
+            }
+        } catch (MongoException e) {
+            logger.error("MongoDB connectivity check failed: {}", e.getMessage(), e);
+            isMongoDbConnected=false;
+            sendEmail.sendEmailAlert("MongoDB connectivity issue", e.getMessage());
+        }
+    }
 
-/**
+
+    // Method to send an email alert
+
+
+    /**
 * Loads the last resume token from the MongoDB collection (change_stream_metadata)
 */
 private Optional<ResumeToken> loadLastResumeToken() {
@@ -61,8 +93,13 @@ try {
 }catch (MongoException e) {
     logger.error("Error while loading resume token from MongoDB: {}", e.getMessage(), e);
     // You may choose to return Optional.empty() or handle it differently
+        logger.info("Stopping the change stream listener...");
+        stopListener();
+
 } catch (Exception e) {
     logger.error("Unexpected error while loading resume token: {}", e.getMessage(), e);
+    logger.info("Stopping the change stream listener");
+    stopListener();
 }
 return Optional.empty();
 }

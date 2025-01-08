@@ -1,5 +1,6 @@
 package com.data.projectiris;
 
+import jakarta.annotation.PostConstruct;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -21,12 +24,46 @@ public class ApiService {
     private final AmadeusProperties amadeusProperties;
     private final RestTemplate restTemplate;
     private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
+    private final SendEmail sendEmail;
 
     @Autowired
-    public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate) {
+    public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate, SendEmail sendEmail) {
         this.amadeusProperties = amadeusProperties;
         this.restTemplate = restTemplate;
+        this.sendEmail = sendEmail;
     }
+
+
+    @PostConstruct// API connectivity check (runs every 30 seconds)
+    @Scheduled(fixedRate = 300000)
+    @Async
+    public void checkApiConnectivity() {
+        try {
+            String ur= amadeusProperties.getEndpoint() ;
+            // Set headers
+            HttpHeaders header = new HttpHeaders();
+            header.set("Authorization", "Basic " + amadeusProperties.getApiKey());
+            header.set("Accept", "application/json");
+            HttpEntity<String> ent = new HttpEntity<>(header);
+            // Make a simple HTTP GET request to the health check endpoint of the API
+            ResponseEntity<String> res = restTemplate.exchange(ur,HttpMethod.GET,ent, String.class);
+
+        if (res.getStatusCode().is2xxSuccessful()) {
+                logger.info("API connection successfully.");
+        } else {
+                logger.warn("API is not responsive. Status Code: {}", res.getStatusCode());
+                sendEmail.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
+            }
+
+        } catch (Exception e) {
+
+                logger.error("API connectivity check failed: {}", e.getMessage(), e);
+                sendEmail.sendEmailAlert("API connectivity issue", e.getMessage());
+
+        }
+    }
+
+
 
     @Retryable(
             value = { Exception.class },  // Retry on any exception
@@ -35,8 +72,10 @@ public class ApiService {
     )
     public AccessEvent postToExternalApi(Document user) {
         String url = amadeusProperties.getEndpoint() + "/API_AccessEventLogs";
+        int cc= user.getInteger("userId");
+        String cardCode = String.valueOf(cc);
         AccessEvent request = new AccessEvent();
-        request.setCardCode("00000239");
+        request.setCardCode(cardCode);
         request.setCardholderFirstName(user.getString("firstName"));
         request.setCardholderIdNumber(null);
         request.setCardholderLastName(user.getString("lastName"));

@@ -12,17 +12,20 @@ public class UserEntity {
     private String firstName;
     private String lastName;
     private Date timeStamp;
+    private int userId;
 
     // Getters and Setters
 
     public UserEntity() {
     }
 
-    public UserEntity(String id, String firstName, String lastName, Date timeStamp) {
+
+    public UserEntity(String id, String firstName, String lastName, Date timeStamp, int userId) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.timeStamp = timeStamp;
+        this.userId = userId;
     }
 
     public String getLastName() {
@@ -47,6 +50,14 @@ public class UserEntity {
 
     public Date getTimeStamp() { return timeStamp; }
     public void setTimeStamp(Date timeStamp) { this.timeStamp = timeStamp;}
+
+    public int getUserId() {
+        return userId;
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
 
     @Override
     public String toString() {
