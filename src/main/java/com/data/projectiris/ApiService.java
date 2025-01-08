@@ -65,11 +65,6 @@ public class ApiService {
 
 
 
-    @Retryable(
-            value = { Exception.class },  // Retry on any exception
-            maxAttempts = 3,             // Max retries
-            backoff = @Backoff(delay = 10000)  // Delay between retries (in ms)
-    )
     public AccessEvent postToExternalApi(Document user) {
         String url = amadeusProperties.getEndpoint() + "/API_AccessEventLogs";
         int cc= user.getInteger("userId");
