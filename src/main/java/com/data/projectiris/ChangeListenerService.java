@@ -27,27 +27,27 @@ private final MongoClient mongoClient;
 private final ApiService apiService;
 private Thread listenerThread;
 private final IrisProperties irisProperties;
-private final SendEmail sendEmail;
+private final EmailAlertService emailAlertService;
 private Optional<ResumeToken> lastResumeToken = Optional.empty();// To store the resume token
 private boolean isMongoDbConnected=true;
 
 
-
-    @Autowired
-public ChangeListenerService(MongoClient mongoClient, ApiService apiService, IrisProperties irisProperties, SendEmail sendEmail) {
+@Autowired
+public ChangeListenerService(MongoClient mongoClient, ApiService apiService, IrisProperties irisProperties, EmailAlertService emailAlertService) {
 this.mongoClient = mongoClient;
 this.apiService = apiService;
 this.irisProperties = irisProperties;
-this.sendEmail = sendEmail;
+this.emailAlertService = emailAlertService;
 }
 
-@PostConstruct
+    @PostConstruct
 public void init() {
 this.lastResumeToken = loadLastResumeToken(); // Load the resume token from the metadata collection
 startChangeStreamListener();  // Start the change stream listener after dependencies are injected
 }
+
     // MongoDB connectivity check
-    @Scheduled(fixedRate = 200000)
+    @Scheduled(fixedRate = 1800000)
     @Async
     public void checkMongoDbConnectivity() {
         try {
@@ -65,12 +65,10 @@ startChangeStreamListener();  // Start the change stream listener after dependen
         } catch (MongoException e) {
             logger.error("MongoDB connectivity check failed: {}", e.getMessage(), e);
             isMongoDbConnected=false;
-            sendEmail.sendEmailAlert("MongoDB connectivity issue", e.getMessage());
+            emailAlertService.sendEmailAlert("MongoDB connectivity issue", e.getMessage());
         }
     }
 
-
-    // Method to send an email alert
 
 
     /**
@@ -95,11 +93,13 @@ try {
     // You may choose to return Optional.empty() or handle it differently
         logger.info("Stopping the change stream listener...");
         stopListener();
+        checkMongoDbConnectivity();
 
 } catch (Exception e) {
     logger.error("Unexpected error while loading resume token: {}", e.getMessage(), e);
     logger.info("Stopping the change stream listener");
     stopListener();
+    checkMongoDbConnectivity();
 }
 return Optional.empty();
 }
@@ -135,6 +135,7 @@ listenerThread = new Thread(() -> {
         }
     } catch (Exception e) {
         logger.error("Error in change stream listener", e);
+        checkMongoDbConnectivity();
     }
 });
 

@@ -1,6 +1,5 @@
 package com.data.projectiris;
 
-import jakarta.annotation.PostConstruct;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,8 +8,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -19,23 +16,24 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Date;
+
 @Service
 public class ApiService {
     private final AmadeusProperties amadeusProperties;
     private final RestTemplate restTemplate;
     private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
-    private final SendEmail sendEmail;
+    private final EmailAlertService emailAlertService;
 
     @Autowired
-    public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate, SendEmail sendEmail) {
+    public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate, EmailAlertService emailAlertService) {
         this.amadeusProperties = amadeusProperties;
         this.restTemplate = restTemplate;
-        this.sendEmail = sendEmail;
+        this.emailAlertService=emailAlertService;
     }
 
-
-    @PostConstruct// API connectivity check (runs every 30 seconds)
-    @Scheduled(fixedRate = 300000)
+    // API connectivity check
+    @Scheduled(fixedRate = 1800000)
     @Async
     public void checkApiConnectivity() {
         try {
@@ -48,17 +46,17 @@ public class ApiService {
             // Make a simple HTTP GET request to the health check endpoint of the API
             ResponseEntity<String> res = restTemplate.exchange(ur,HttpMethod.GET,ent, String.class);
 
-        if (res.getStatusCode().is2xxSuccessful()) {
-                logger.info("API connection successfully.");
-        } else {
+            if (res.getStatusCode().is2xxSuccessful()) {
+                logger.info("API connection successful");
+            } else {
                 logger.warn("API is not responsive. Status Code: {}", res.getStatusCode());
-                sendEmail.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
+                emailAlertService.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
             }
 
         } catch (Exception e) {
 
-                logger.error("API connectivity check failed: {}", e.getMessage(), e);
-                sendEmail.sendEmailAlert("API connectivity issue", e.getMessage());
+            logger.error("API connectivity check failed: {}", e.getMessage(), e);
+            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
 
         }
     }
@@ -77,8 +75,8 @@ public class ApiService {
         request.setCardholderTypeName("Employee");
         request.setDateTime(user.getDate("timestamp"));
         request.setInOutType("Any");
-        request.setJournalUpdateDateTime("2022-12-05T11:26:45.187-05:00");
-        request.setReaderName("Iris Reader");
+        request.setJournalUpdateDateTime((new Date()));
+        request.setReaderName(user.getString("deviceName"));
         request.setReaderUID("ba1e6a82-4b30-4213-819f-65004c9f6cc4");
         request.setType("AccessGranted");
 

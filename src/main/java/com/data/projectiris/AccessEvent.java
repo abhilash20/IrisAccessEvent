@@ -20,7 +20,7 @@ class AccessEvent {
     @JsonProperty("inOutType")
     private String inOutType;
     @JsonProperty("journalUpdateDateTime")
-    private String journalUpdateDateTime;
+    private Date journalUpdateDateTime;
     @JsonProperty("readerName")
     private String readerName;
     @JsonProperty("readerUID")
@@ -31,7 +31,7 @@ class AccessEvent {
     public AccessEvent() {
     }
 
-    public AccessEvent(String cardCode, String cardholderFirstName, String cardholderLastName, String cardholderIdNumber, String cardholderTypeName, Date dateTime, String inOutType, String journalUpdateDateTime, String readerName, String readerUID, String type) {
+    public AccessEvent(String cardCode, String cardholderFirstName, String cardholderLastName, String cardholderIdNumber, String cardholderTypeName, Date dateTime, String inOutType, Date journalUpdateDateTime, String readerName, String readerUID, String type) {
         this.cardCode = cardCode;
         this.cardholderFirstName = cardholderFirstName;
         this.cardholderLastName = cardholderLastName;
@@ -101,11 +101,11 @@ class AccessEvent {
         this.inOutType = inOutType;
     }
 
-    public String getJournalUpdateDateTime() {
+    public Date getJournalUpdateDateTime() {
         return journalUpdateDateTime;
     }
 
-    public void setJournalUpdateDateTime(String journalUpdateDateTime) {
+    public void setJournalUpdateDateTime(Date journalUpdateDateTime) {
         this.journalUpdateDateTime = journalUpdateDateTime;
     }
 
