@@ -33,9 +33,9 @@ public class EmailAlertService {
 
         List<String> cc_emails=irisProperties.getAlert_cc_emails();
 
-        if(cc_emails!=null && !cc_emails.isEmpty()) {
+        if(cc_emails!=null && !cc_emails.isEmpty()) {   //check CC Email recipient is null as its optional
             String[] cc_emailsArr = cc_emails.toArray(new String[0]);
-            mailMessage.setCc(cc_emailsArr);
+            mailMessage.setCc(cc_emailsArr);    //Set CC Email recipient
         }
         try {
             emailSender.send(mailMessage);

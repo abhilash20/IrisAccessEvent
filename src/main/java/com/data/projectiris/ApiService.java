@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 
+
 @Service
 public class ApiService {
     private final AmadeusProperties amadeusProperties;
@@ -37,14 +38,14 @@ public class ApiService {
     @Async
     public void checkApiConnectivity() {
         try {
-            String ur= amadeusProperties.getEndpoint() ;
-            // Set headers
+            String url= amadeusProperties.getEndpoint() ;
+                        // Set headers
             HttpHeaders header = new HttpHeaders();
             header.set("Authorization", "Basic " + amadeusProperties.getApiKey());
             header.set("Accept", "application/json");
             HttpEntity<String> ent = new HttpEntity<>(header);
             // Make a simple HTTP GET request to the health check endpoint of the API
-            ResponseEntity<String> res = restTemplate.exchange(ur,HttpMethod.GET,ent, String.class);
+            ResponseEntity<String> res = restTemplate.exchange(url,HttpMethod.GET,ent, String.class);
 
             if (res.getStatusCode().is2xxSuccessful()) {
                 logger.info("API connection successful");
@@ -53,7 +54,19 @@ public class ApiService {
                 emailAlertService.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
             }
 
-        } catch (Exception e) {
+        } catch (HttpClientErrorException e) {
+            // Handle specific HTTP errors
+            logger.error("API call failed with client side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+        } catch (HttpServerErrorException e) {
+            // Handle specific HTTP errors
+            logger.error("API call failed with Server side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+        } catch (RestClientException e) {
+            // Handle other RestClient errors
+            logger.error("RestClient error occurred while calling the API: {}", e.getMessage(), e);
+            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+        }catch (Exception e) {
 
             logger.error("API connectivity check failed: {}", e.getMessage(), e);
             emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
@@ -65,6 +78,25 @@ public class ApiService {
 
     public AccessEvent postToExternalApi(Document user) {
         String url = amadeusProperties.getEndpoint() + "/API_AccessEventLogs";
+
+        // Validate required fields
+        try{
+        if (user.getInteger("userId") == null || user.getString("firstName") == null || user.getString("lastName") == null || user.getDate("timestamp") == null || user.getString("deviceName") == null || user.getString("deviceSn") == null) {
+            logger.error("Invalid data received. Missing critical fields.");
+            return new AccessEvent(); //Returning Empty Object to ignore this Access Event
+
+        }
+        }catch (NumberFormatException e) {
+            logger.error("Invalid data received.{}", e.getMessage());
+            return new AccessEvent();
+        }catch (ClassCastException e) {
+            logger.error("Invalid data type received{}", e.getMessage());
+            return new AccessEvent();
+        }
+        catch (Exception e) {
+            logger.error("Invalid data received {}", e.getMessage());
+        }
+
         int cc= user.getInteger("userId");
         String cardCode = String.valueOf(cc);
         AccessEvent request = new AccessEvent();
@@ -101,6 +133,19 @@ public class ApiService {
             if (response.getStatusCode().is2xxSuccessful()) {
                 // Log success acknowledgment
                 logger.info("Successfully sent access event to API. Status: {}", response.getStatusCode());
+                logger.info("Successfully sent access event to API with cardCode={}, firstName={}, IdNumber={}, lastName={}, cardHolderTypeName={}, dateTime={}, inOutType={},JournalDateTime={}, readerName={}, readerUID={}, Type={}",
+                        cardCode,
+                        request.getCardholderFirstName(),
+                        request.getCardholderIdNumber(),
+                        request.getCardholderLastName(),
+                        request.getCardholderTypeName(),
+                        request.getDateTime(),
+                        request.getInOutType(),
+                        request.getJournalUpdateDateTime(),
+                        request.getReaderName(),
+                        request.getReaderUID(),
+                        request.getType()
+                );
                 return response.getBody();
             } else {
                 // Log error acknowledgment
@@ -118,10 +163,14 @@ public class ApiService {
 //
 //            return response.getBody();
 
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
+        } catch (HttpClientErrorException e) {
             // Handle specific HTTP errors
-            logger.error("API call failed with HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            logger.error("API call failed with client side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
             return null;
+        } catch (HttpServerErrorException e) {
+                // Handle specific HTTP errors
+                logger.error("API call failed with Server side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+                return null;
         } catch (RestClientException e) {
             // Handle other RestClient errors
             logger.error("RestClient error occurred while calling the API: {}", e.getMessage(), e);
