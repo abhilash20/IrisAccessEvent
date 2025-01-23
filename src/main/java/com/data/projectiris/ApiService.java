@@ -24,7 +24,7 @@ public class ApiService {
     private final RestTemplate restTemplate;
     private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
     private final EmailAlertService emailAlertService;
-    public boolean emailsent=false;
+    public boolean emailSent=false;
 
     @Autowired
     public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate, EmailAlertService emailAlertService) {
@@ -49,41 +49,41 @@ public class ApiService {
 
             if (res.getStatusCode().is2xxSuccessful()) {
                 logger.info("API connection successful");
-                emailsent=false;
+                emailSent=false;
             } else {
                 logger.warn("API is not responsive. Status Code: {}", res.getStatusCode());
-                if (!emailsent) {
+                if (!emailSent) {
                     emailAlertService.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
-                    emailsent=true;
+                    emailSent=true;
                 }
             }
         } catch (HttpClientErrorException e) {
             // Handle specific HTTP errors
             logger.error("API call failed with client side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
-            if (!emailsent) {
+            if (!emailSent) {
                 emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
-                emailsent=true;
+                emailSent=true;
             }
         } catch (HttpServerErrorException e) {
             // Handle specific HTTP errors
             logger.error("API call failed with Server side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
-            if (!emailsent) {
+            if (!emailSent) {
                 emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
-                emailsent=true;
+                emailSent=true;
             }
         } catch (RestClientException e) {
             // Handle other RestClient errors
             logger.error("RestClient error occurred while calling the API: {}", e.getMessage(), e);
-            if (!emailsent) {
+            if (!emailSent) {
                 emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
-                emailsent=true;
+                emailSent=true;
             }
         }catch (Exception e) {
 
             logger.error("API connectivity check failed: {}", e.getMessage(), e);
-            if (!emailsent) {
+            if (!emailSent) {
                 emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
-                emailsent=true;
+                emailSent=true;
             }
 
         }
@@ -118,7 +118,7 @@ public class ApiService {
         } else if (cc instanceof Integer) {
             cardCode = String.valueOf(cc);
         } else {
-            logger.error("Unexpected type for userId: " + cc.getClass().getName());
+            logger.error("Unexpected type for userId:  " + cc.getClass().getName());
         }
 
         AccessEvent request = new AccessEvent();
