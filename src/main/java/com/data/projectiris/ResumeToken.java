@@ -39,6 +39,7 @@ public class ResumeToken {
             throw new NullPointerException("Token document is null");
         }
         return tokenDocument.toJson().getBytes(StandardCharsets.UTF_8);
+//        return tokenDocument.toJson().getBytes();
     }
 
     // Static method to parse the byte array and create a ResumeToken
@@ -51,6 +52,7 @@ public class ResumeToken {
         try {
             String json = new String(tokenBytes, StandardCharsets.UTF_8);
             BsonDocument document = BsonDocument.parse(json);
+//            BsonDocument document = BsonDocument.parse(new String(tokenBytes));
             return new ResumeToken(document);
         } catch (Exception e) {
             logger.error("Error parsing byte array to BsonDocument. Error: {}", e.getMessage());

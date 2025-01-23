@@ -15,7 +15,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
 import java.util.Date;
 
 
@@ -25,6 +24,7 @@ public class ApiService {
     private final RestTemplate restTemplate;
     private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
     private final EmailAlertService emailAlertService;
+    public boolean emailsent=false;
 
     @Autowired
     public ApiService(AmadeusProperties amadeusProperties, RestTemplate restTemplate, EmailAlertService emailAlertService) {
@@ -49,31 +49,45 @@ public class ApiService {
 
             if (res.getStatusCode().is2xxSuccessful()) {
                 logger.info("API connection successful");
+                emailsent=false;
             } else {
                 logger.warn("API is not responsive. Status Code: {}", res.getStatusCode());
-                emailAlertService.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
+                if (!emailsent) {
+                    emailAlertService.sendEmailAlert("API connectivity issue", "API returned status: " + res.getStatusCode());
+                    emailsent=true;
+                }
             }
-
         } catch (HttpClientErrorException e) {
             // Handle specific HTTP errors
             logger.error("API call failed with client side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
-            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+            if (!emailsent) {
+                emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+                emailsent=true;
+            }
         } catch (HttpServerErrorException e) {
             // Handle specific HTTP errors
             logger.error("API call failed with Server side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
-            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+            if (!emailsent) {
+                emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+                emailsent=true;
+            }
         } catch (RestClientException e) {
             // Handle other RestClient errors
             logger.error("RestClient error occurred while calling the API: {}", e.getMessage(), e);
-            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+            if (!emailsent) {
+                emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+                emailsent=true;
+            }
         }catch (Exception e) {
 
             logger.error("API connectivity check failed: {}", e.getMessage(), e);
-            emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+            if (!emailsent) {
+                emailAlertService.sendEmailAlert("API connectivity issue", e.getMessage());
+                emailsent=true;
+            }
 
         }
     }
-
 
 
     public AccessEvent postToExternalApi(Document user) {
@@ -81,7 +95,7 @@ public class ApiService {
 
         // Validate required fields
         try{
-        if (user.getInteger("userId") == null || user.getString("firstName") == null || user.getString("lastName") == null || user.getDate("timestamp") == null || user.getString("deviceName") == null || user.getString("deviceSn") == null) {
+        if (user.get("userId") == null || user.getString("firstName") == null || user.getString("lastName") == null || user.getDate("timestamp") == null || user.getString("deviceName") == null || user.getString("deviceSn") == null) {
             logger.error("Invalid data received. Missing critical fields.");
             return new AccessEvent(); //Returning Empty Object to ignore this Access Event
 
@@ -97,8 +111,16 @@ public class ApiService {
             logger.error("Invalid data received {}", e.getMessage());
         }
 
-        int cc= user.getInteger("userId");
-        String cardCode = String.valueOf(cc);
+        String cardCode=null;
+        Object cc= user.get("userId");
+        if (cc instanceof String) {
+                cardCode= (String) cc;
+        } else if (cc instanceof Integer) {
+            cardCode = String.valueOf(cc);
+        } else {
+            logger.error("Unexpected type for userId: " + cc.getClass().getName());
+        }
+
         AccessEvent request = new AccessEvent();
         request.setCardCode(cardCode);
         request.setCardholderFirstName(user.getString("firstName"));
@@ -132,9 +154,9 @@ public class ApiService {
             // Check the HTTP status code for acknowledgment
             if (response.getStatusCode().is2xxSuccessful()) {
                 // Log success acknowledgment
-                logger.info("Successfully sent access event to API. Status: {}", response.getStatusCode());
+                logger.info("Successfully sent access event to API. Status: {} and response body {} ", response.getStatusCode(), response.getBody());
                 logger.info("Successfully sent access event to API with cardCode={}, firstName={}, IdNumber={}, lastName={}, cardHolderTypeName={}, dateTime={}, inOutType={},JournalDateTime={}, readerName={}, readerUID={}, Type={}",
-                        cardCode,
+                        request.getCardCode(),
                         request.getCardholderFirstName(),
                         request.getCardholderIdNumber(),
                         request.getCardholderLastName(),
@@ -151,36 +173,27 @@ public class ApiService {
                 // Log error acknowledgment
                 logger.error("API call failed with status code: {}", response.getStatusCode());
                 return null;
-
             }
-
-            // Log the response body (which could contain further acknowledgment data)
-//            if (response.getBody() != null) {
-//                logger.info("Response Body: {}", response.getBody());
-//            } else {
-//                logger.warn("Received an empty response body.");
-//            }
-//
-//            return response.getBody();
-
         } catch (HttpClientErrorException e) {
             // Handle specific HTTP errors
             logger.error("API call failed with client side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            checkApiConnectivity();
             return null;
         } catch (HttpServerErrorException e) {
                 // Handle specific HTTP errors
                 logger.error("API call failed with Server side HTTP error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+                checkApiConnectivity();
                 return null;
         } catch (RestClientException e) {
             // Handle other RestClient errors
             logger.error("RestClient error occurred while calling the API: {}", e.getMessage(), e);
+            checkApiConnectivity();
             return null;
         } catch (Exception e) {
             // General exception catch
             logger.error("Error occurred while calling API: {}", e.getMessage(), e);
+            checkApiConnectivity();
             return null;
         }
-
-
     }
 }
